@@ -68,7 +68,8 @@ export class ReportService {
           client:clients(first_name, last_name, postcode),
           centre:centres(name),
           issued_by:users!issued_by(first_name, last_name),
-          income_source:income_sources(name)
+          income_source:income_sources(name),
+          voucher_referral_reasons(referral_reason:referral_reasons(name))
         `, { count: 'exact' })
         .order('issue_date', { ascending: false });
 
@@ -163,7 +164,7 @@ export class ReportService {
         if (rows.length === 0) {
           return 'No data to export';
         }
-        const headers = ['voucher_code', 'status', 'issue_date', 'household_size', 'collection_method', 'is_repeat_voucher', 'client_name', 'centre', 'issued_by', 'income_source'];
+        const headers = ['voucher_code', 'status', 'issue_date', 'household_size', 'collection_method', 'is_repeat_voucher', 'referral_reasons', 'client_name', 'centre', 'issued_by', 'income_source'];
         const escapeCsv = val => {
           const str = String(val ?? '');
           if (str.includes(',') || str.includes('"') || str.includes('\n')) {
@@ -178,6 +179,10 @@ export class ReportService {
             if (h === 'centre') return escapeCsv(r.centre?.name);
             if (h === 'issued_by') return escapeCsv(r.issued_by ? `${r.issued_by.first_name} ${r.issued_by.last_name}` : '');
             if (h === 'income_source') return escapeCsv(r.income_source?.name);
+            if (h === 'referral_reasons') {
+              const reasons = r.voucher_referral_reasons?.map(vrr => vrr.referral_reason?.name).filter(Boolean) || [];
+              return escapeCsv(reasons.join('; '));
+            }
             return escapeCsv(r[h]);
           }).join(','))
         ];
