@@ -17,7 +17,9 @@ export class ClientController {
         postcode,
         page: parseInt(page),
         limit: parseInt(limit),
-        userCentres: req.userCentres
+        userCentres: req.userCentres,
+        userRole: req.userRole,
+        createdByUserId: req.user?.id
       });
 
       res.json(result);
@@ -31,7 +33,7 @@ export class ClientController {
     try {
       const { id } = req.params;
       
-      const client = await this.clientService.findById(id);
+      const client = await this.clientService.findById(id, req.userCentres, req.userRole, req.user?.id);
 
       if (!client) {
         return res.status(404).json({ error: 'Client not found' });
@@ -48,7 +50,11 @@ export class ClientController {
     try {
       const { id } = req.params;
       
-      const history = await this.clientService.getVoucherHistory(id);
+      const history = await this.clientService.getVoucherHistory(id, req.userCentres, req.userRole, req.user?.id);
+
+      if (history === null) {
+        return res.status(404).json({ error: 'Client not found' });
+      }
 
       res.json(history);
     } catch (error) {
@@ -103,7 +109,7 @@ export class ClientController {
       const { id } = req.params;
       const updates = req.body;
 
-      const client = await this.clientService.update(id, updates);
+      const client = await this.clientService.update(id, updates, req.userCentres, req.userRole, req.user?.id);
 
       if (!client) {
         return res.status(404).json({ error: 'Client not found' });
@@ -131,7 +137,17 @@ export class ClientController {
     try {
       const { id } = req.params;
 
-      await this.clientService.delete(id);
+      try {
+        const deleted = await this.clientService.delete(id, req.userCentres, req.userRole, req.user?.id);
+        if (!deleted) {
+          return res.status(404).json({ error: 'Client not found' });
+        }
+      } catch (err) {
+        if (err.statusCode === 409) {
+          return res.status(409).json({ error: err.message });
+        }
+        throw err;
+      }
 
       // Log audit trail
       await this.auditService.log({

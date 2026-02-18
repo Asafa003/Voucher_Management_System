@@ -10,25 +10,25 @@ router.use(authenticate);
 
 // GET /api/v1/reports/dashboard - Get dashboard statistics
 router.get('/dashboard', 
-  authorize('super_admin', 'centre_admin', 'read_only'),
+  authorize('super_admin', 'centre_admin', 'staff', 'read_only'),
   reportController.getDashboard
 );
 
 // GET /api/v1/reports/vouchers - Get voucher report
 router.get('/vouchers', 
-  authorize('super_admin', 'centre_admin', 'read_only'),
+  authorize('super_admin', 'centre_admin', 'staff', 'read_only'),
   reportController.getVoucherReport
 );
 
 // GET /api/v1/reports/clients - Get client report
 router.get('/clients', 
-  authorize('super_admin', 'centre_admin', 'read_only'),
+  authorize('super_admin', 'centre_admin', 'staff', 'read_only'),
   reportController.getClientReport
 );
 
 // GET /api/v1/reports/export - Export data to CSV/XLSX
 router.get('/export', 
-  authorize('super_admin', 'centre_admin'),
+  authorize('super_admin', 'centre_admin', 'staff'),
   reportController.exportData
 );
 
