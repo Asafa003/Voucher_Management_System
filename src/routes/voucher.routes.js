@@ -1,6 +1,13 @@
 import express from 'express';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { VoucherController } from '../controllers/voucher.controller.js';
+import { handleValidation } from '../middleware/validate.js';
+import {
+  voucherCreateValidation,
+  voucherUpdateValidation,
+  voucherCancelValidation,
+  voucherCheckRepeatValidation
+} from '../validators/index.js';
 
 const router = express.Router();
 const voucherController = new VoucherController();
@@ -14,34 +21,26 @@ router.get('/',
   voucherController.getVouchers
 );
 
-// GET /api/v1/vouchers/:id - Get single voucher
-router.get('/:id', 
-  authorize('super_admin', 'centre_admin', 'staff', 'read_only'),
-  voucherController.getVoucherById
-);
-
-// GET /api/v1/vouchers/code/:code - Get voucher by code
-router.get('/code/:code', 
-  authorize('super_admin', 'centre_admin', 'staff', 'read_only'),
-  voucherController.getVoucherByCode
-);
-
 // POST /api/v1/vouchers - Create new voucher
 router.post('/', 
+  voucherCreateValidation,
+  handleValidation,
   authorize('super_admin', 'centre_admin', 'staff'),
   voucherController.createVoucher
 );
 
-// POST /api/v1/vouchers/check-repeat - Check if client needs repeat voucher handling
+// POST /api/v1/vouchers/check-repeat - Check if client needs repeat voucher handling (must be before /:id)
 router.post('/check-repeat', 
+  voucherCheckRepeatValidation,
+  handleValidation,
   authorize('super_admin', 'centre_admin', 'staff'),
   voucherController.checkRepeatVoucher
 );
 
-// PATCH /api/v1/vouchers/:id - Update voucher
-router.patch('/:id', 
-  authorize('super_admin', 'centre_admin', 'staff'),
-  voucherController.updateVoucher
+// GET /api/v1/vouchers/code/:code - Get voucher by code (must be before /:id)
+router.get('/code/:code', 
+  authorize('super_admin', 'centre_admin', 'staff', 'read_only'),
+  voucherController.getVoucherByCode
 );
 
 // PATCH /api/v1/vouchers/:id/fulfill - Mark voucher as fulfilled
@@ -52,6 +51,8 @@ router.patch('/:id/fulfill',
 
 // PATCH /api/v1/vouchers/:id/cancel - Cancel voucher
 router.patch('/:id/cancel', 
+  voucherCancelValidation,
+  handleValidation,
   authorize('super_admin', 'centre_admin', 'staff'),
   voucherController.cancelVoucher
 );
@@ -60,6 +61,20 @@ router.patch('/:id/cancel',
 router.get('/:id/print', 
   authorize('super_admin', 'centre_admin', 'staff'),
   voucherController.getPrintableVoucher
+);
+
+// GET /api/v1/vouchers/:id - Get single voucher
+router.get('/:id', 
+  authorize('super_admin', 'centre_admin', 'staff', 'read_only'),
+  voucherController.getVoucherById
+);
+
+// PATCH /api/v1/vouchers/:id - Update voucher
+router.patch('/:id', 
+  voucherUpdateValidation,
+  handleValidation,
+  authorize('super_admin', 'centre_admin', 'staff'),
+  voucherController.updateVoucher
 );
 
 export default router;

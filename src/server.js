@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestLogger } from './middleware/requestLogger.js';
+import { apiLimiter } from './middleware/rateLimit.js';
 
 // Import routes
 import authRoutes from './routes/auth.routes.js';
@@ -14,6 +15,7 @@ import centreRoutes from './routes/centre.routes.js';
 import reportRoutes from './routes/report.routes.js';
 import auditRoutes from './routes/audit.routes.js';
 import userRoutes from './routes/user.routes.js';
+import referenceRoutes from './routes/reference.routes.js';
 
 // Load environment variables
 dotenv.config();
@@ -24,10 +26,19 @@ const API_VERSION = process.env.API_VERSION || 'v1';
 
 // Security middleware
 app.use(helmet());
+const corsOrigin = process.env.CORS_ORIGIN;
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: process.env.NODE_ENV === 'production' && corsOrigin
+    ? corsOrigin.split(',').map(o => o.trim())
+    : corsOrigin || '*',
   credentials: true
 }));
+
+// Rate limiting (skip for health check)
+app.use((req, res, next) => {
+  if (req.path === '/health' || req.path === '/health/ready') return next();
+  return apiLimiter(req, res, next);
+});
 
 // Body parsing middleware
 app.use(express.json());
@@ -36,13 +47,33 @@ app.use(express.urlencoded({ extended: true }));
 // Request logging
 app.use(requestLogger);
 
-// Health check endpoint
+// Health check endpoint (liveness)
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
+});
+
+// Readiness check (includes DB connectivity)
+app.get('/health/ready', async (req, res) => {
+  try {
+    const { supabaseAdmin } = await import('./config/supabase.js');
+    const { error } = await supabaseAdmin.from('centres').select('id').limit(1);
+    if (error) throw error;
+    res.json({
+      status: 'ok',
+      database: 'connected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(503).json({
+      status: 'degraded',
+      database: 'disconnected',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // API routes
@@ -53,6 +84,7 @@ app.use(`/api/${API_VERSION}/centres`, centreRoutes);
 app.use(`/api/${API_VERSION}/reports`, reportRoutes);
 app.use(`/api/${API_VERSION}/audit`, auditRoutes);
 app.use(`/api/${API_VERSION}/users`, userRoutes);
+app.use(`/api/${API_VERSION}/reference`, referenceRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
