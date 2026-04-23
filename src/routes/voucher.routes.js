@@ -1,9 +1,17 @@
 import express from 'express';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { VoucherController } from '../controllers/voucher.controller.js';
+import { validate, voucherSchema } from '../utils/validation.js';
+import Joi from 'joi';
 
 const router = express.Router();
 const voucherController = new VoucherController();
+
+// Validation schema for repeat check
+const repeatCheckSchema = Joi.object({
+  client_id: Joi.string().uuid().required(),
+  months: Joi.number().integer().min(1).max(24).default(6)
+});
 
 // All routes require authentication
 router.use(authenticate);
@@ -29,12 +37,14 @@ router.get('/code/:code',
 // POST /api/v1/vouchers - Create new voucher
 router.post('/', 
   authorize('super_admin', 'centre_admin', 'staff'),
+  validate(voucherSchema),
   voucherController.createVoucher
 );
 
 // POST /api/v1/vouchers/check-repeat - Check if client needs repeat voucher handling
 router.post('/check-repeat', 
   authorize('super_admin', 'centre_admin', 'staff'),
+  validate(repeatCheckSchema),
   voucherController.checkRepeatVoucher
 );
 

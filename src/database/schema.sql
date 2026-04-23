@@ -18,8 +18,36 @@ CREATE TYPE audit_action AS ENUM (
   'client_created', 'client_updated', 'client_deleted',
   'voucher_created', 'voucher_updated', 'voucher_cancelled',
   'consent_captured', 'consent_revoked',
-  'data_exported', 'user_role_changed', 'user_created', 'user_deleted'
+  'data_exported', 'user_role_changed', 'user_created', 'user_deleted',
+  'centre_created', 'centre_updated', 'centre_deleted'
 );
+
+-- ... rest of tables ...
+
+-- GDPR Compliance: Trigger to nullify data when consent is revoked
+CREATE OR REPLACE FUNCTION handle_consent_revocation()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Handle contact consent revocation
+  IF OLD.contact_consent = true AND NEW.contact_consent = false THEN
+    NEW.phone := NULL;
+    NEW.email := NULL;
+  END IF;
+
+  -- Handle dietary consent revocation
+  IF OLD.dietary_consent = true AND NEW.dietary_consent = false THEN
+    NEW.dietary_requirements := NULL;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_consent_revocation
+BEFORE UPDATE ON clients
+FOR EACH ROW
+EXECUTE FUNCTION handle_consent_revocation();
+
 
 -- =============================================
 -- CORE TABLES

@@ -51,8 +51,8 @@ After running the schema, create your first admin:
 -- Then insert the profile:
 INSERT INTO users (id, email, first_name, last_name, role, is_active)
 VALUES (
-  'AUTH_USER_UUID_HERE',
-  'admin@example.com',
+  'AUTH_USER_UUID_HERE', 3682a487-a162-4f8d-a2c0-149154ae05ce
+  'admin@cityofgodfoodbank.org',
   'Admin',
   'User',
   'super_admin',

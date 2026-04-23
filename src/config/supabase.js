@@ -11,6 +11,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
+if (!supabaseServiceKey) {
+  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
+}
+
 // Client for user-level operations (respects RLS)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
