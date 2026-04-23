@@ -8,10 +8,7 @@ export class AuditController {
 
   getAuditLogs = async (req, res, next) => {
     try {
-      const {
-        user_id, action, resource_type, resource_id,
-        start_date, end_date, page = 1, limit = 100
-      } = req.query;
+      const { user_id, action, resource_type, resource_id, start_date, end_date, page = 1, limit = 100 } = req.query;
 
       const result = await this.auditService.getAuditLogs({
         userId: user_id,
@@ -33,13 +30,13 @@ export class AuditController {
 
   getAuditLogById = async (req, res, next) => {
     try {
-      const auditLog = await this.auditService.getAuditLogById(req.params.id);
+      const log = await this.auditService.getAuditLogById(req.params.id);
 
-      if (!auditLog) {
+      if (!log) {
         return res.status(404).json({ error: 'Audit log not found' });
       }
 
-      res.json(auditLog);
+      res.json(log);
     } catch (error) {
       logger.error('Error fetching audit log:', error);
       next(error);

@@ -1,6 +1,8 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../utils/logger.js';
 
+const VOUCHER_PERIOD_MONTHS = parseInt(process.env.VOUCHER_PERIOD_MONTHS, 10) || 6;
+
 export class VoucherService {
   /**
    * Finds vouchers based on filters.
@@ -12,8 +14,8 @@ export class VoucherService {
         .from('vouchers')
         .select(`
           *,
-          client:clients(id, first_name, last_name, postcode),
-          centre:centres(id, name),
+          client:clients(id, first_name, last_name, postcode, household_size),
+          centre:centres(id, name, address, opening_times),
           issued_by_user:users!issued_by(first_name, last_name),
           income_source:income_sources(name),
           repeat_reason:repeat_voucher_reasons(name),
@@ -50,7 +52,7 @@ export class VoucherService {
         .from('vouchers')
         .select(`
           *,
-          client:clients(id, first_name, last_name, address, postcode, phone, email, year_of_birth),
+          client:clients(id, first_name, last_name, address, postcode, phone, email, year_of_birth, household_size),
           centre:centres(id, name, address, postcode, phone, email, opening_times, delivery_available),
           issued_by_user:users!issued_by(first_name, last_name, email),
           fulfilled_by_user:users!fulfilled_by(first_name, last_name),
@@ -80,10 +82,10 @@ export class VoucherService {
           centre:centres(id, name, address),
           issued_by_user:users!issued_by(first_name, last_name)
         `)
-        .eq('voucher_code', code)
+        .eq('voucher_code', code.toUpperCase())
         .single();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') throw error;
       return data;
     } catch (error) {
       logger.error('Error finding voucher by code:', error);
@@ -95,7 +97,7 @@ export class VoucherService {
    * RPC call to check repeat status. Uses admin to ensure bypass of RLS for this specific check 
    * (staff might need to know repeat status even if voucher belongs to another centre)
    */
-  async checkRepeatVoucher(clientId, months = 6) {
+  async checkRepeatVoucher(clientId, months = VOUCHER_PERIOD_MONTHS) {
     try {
       const { data, error } = await supabaseAdmin
         .rpc('check_repeat_voucher', {
@@ -104,16 +106,65 @@ export class VoucherService {
         });
 
       if (error) throw error;
-      return data?.[0] || { voucher_count: 0, is_repeat: false, last_vouchers: [] };
+      const result = Array.isArray(data) ? data[0] : data;
+      return {
+        voucher_count: result?.voucher_count ?? 0,
+        is_repeat: result?.is_repeat ?? false,
+        last_vouchers: result?.last_vouchers ?? []
+      };
     } catch (error) {
       logger.error('Error checking repeat voucher:', error);
       throw error;
     }
   }
 
+  async _validateReferences({ client_id, centre_id, income_source_id, referral_reason_ids, repeat_voucher_reason_id }) {
+    const err = (msg) => {
+      const e = new Error(msg);
+      e.statusCode = 400;
+      return e;
+    };
+
+    // Use admin for reference validation to ensure existence check works regardless of RLS
+    const { data: client } = await supabaseAdmin.from('clients').select('id').eq('id', client_id).single();
+    if (!client) throw err('Invalid client_id: client not found');
+
+    const { data: centre } = await supabaseAdmin.from('centres').select('id').eq('id', centre_id).single();
+    if (!centre) throw err('Invalid centre_id: centre not found');
+
+    if (income_source_id) {
+      const { data: income } = await supabaseAdmin.from('income_sources').select('id').eq('id', income_source_id).single();
+      if (!income) throw err('Invalid income_source_id: not found');
+    }
+
+    if (referral_reason_ids && Array.isArray(referral_reason_ids) && referral_reason_ids.length > 0) {
+      const limited = referral_reason_ids.slice(0, 4);
+      const { data: reasons } = await supabaseAdmin.from('referral_reasons').select('id').in('id', limited);
+      const foundIds = new Set((reasons || []).map(r => r.id));
+      const invalid = limited.filter(id => !foundIds.has(id));
+      if (invalid.length > 0) {
+        throw err(`Invalid referral_reason_ids: ${invalid.join(', ')} not found`);
+      }
+    }
+
+    if (repeat_voucher_reason_id) {
+      const { data: reason } = await supabaseAdmin.from('repeat_voucher_reasons').select('id').eq('id', repeat_voucher_reason_id).single();
+      if (!reason) throw err('Invalid repeat_voucher_reason_id: not found');
+    }
+  }
+
   async create(voucherData, referralReasonIds = []) {
     try {
-      // 1. Check repeat voucher status using Admin (to see across centres)
+      // 1. Validate references
+      await this._validateReferences({
+        client_id: voucherData.client_id,
+        centre_id: voucherData.centre_id,
+        income_source_id: voucherData.income_source_id,
+        referral_reason_ids: referralReasonIds,
+        repeat_voucher_reason_id: voucherData.repeat_voucher_reason_id
+      });
+
+      // 2. Check repeat voucher status using Admin (to see across centres)
       const repeatCheck = await this.checkRepeatVoucher(voucherData.client_id);
 
       if (repeatCheck.is_repeat) {
@@ -127,7 +178,7 @@ export class VoucherService {
         }
       }
 
-      // 2. Insert voucher using user client to respect RLS (staff must be assigned to the centre)
+      // 3. Insert voucher using user client to respect RLS (staff must be assigned to the centre)
       const { data: voucher, error } = await supabase
         .from('vouchers')
         .insert({
@@ -149,7 +200,7 @@ export class VoucherService {
 
       if (error) throw error;
 
-      // 3. Insert referral reasons
+      // 4. Insert referral reasons
       if (referralReasonIds && referralReasonIds.length > 0) {
         const reasons = referralReasonIds.slice(0, 4).map(reasonId => ({
           voucher_id: voucher.id,
@@ -162,7 +213,6 @@ export class VoucherService {
 
         if (reasonError) {
           logger.error('Error inserting referral reasons:', reasonError);
-          // We don't fail the whole request if reasons fail, but log it
         }
       }
 
@@ -175,14 +225,33 @@ export class VoucherService {
 
   async update(id, updates) {
     try {
+      const { referral_reason_ids, ...updateFields } = updates;
+      
+      const allowedFields = ['household_size', 'expiry_date', 'income_source_id', 'collection_method', 'notes', 'status'];
+      const sanitized = Object.fromEntries(
+        Object.entries(updateFields).filter(([k]) => allowedFields.includes(k))
+      );
+
       const { data, error } = await supabase
         .from('vouchers')
-        .update(updates)
+        .update(sanitized)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
+
+      if (referral_reason_ids && Array.isArray(referral_reason_ids)) {
+        // Use user client to respect RLS for deleting/inserting reasons
+        await supabase.from('voucher_referral_reasons').delete().eq('voucher_id', id);
+        const limited = referral_reason_ids.slice(0, 4);
+        if (limited.length > 0) {
+          await supabase
+            .from('voucher_referral_reasons')
+            .insert(limited.map(rr => ({ voucher_id: id, referral_reason_id: rr })));
+        }
+      }
+
       return data;
     } catch (error) {
       logger.error('Error updating voucher:', error);
@@ -200,7 +269,7 @@ export class VoucherService {
           fulfilled_by: userId
         })
         .eq('id', id)
-        .eq('status', 'issued') // Can only fulfill issued vouchers
+        .eq('status', 'issued')
         .select()
         .single();
 
@@ -223,7 +292,7 @@ export class VoucherService {
           cancellation_reason: reason
         })
         .eq('id', id)
-        .eq('status', 'issued') // Can only cancel issued vouchers
+        .eq('status', 'issued')
         .select()
         .single();
 

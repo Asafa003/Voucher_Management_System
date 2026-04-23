@@ -191,7 +191,7 @@ export class VoucherController {
         resource_type: 'voucher',
         resource_id: voucher.id,
         centre_id: voucher.centre_id,
-        details: { status_change: 'fulfilled' },
+        details: { action: 'fulfilled' },
         ip_address: req.ip,
         user_agent: req.get('user-agent')
       });

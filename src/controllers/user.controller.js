@@ -72,7 +72,7 @@ export class UserController {
       }
 
       await this.auditService.log({
-        action: 'user_role_changed', // Use role changed if role is in updates, or generic
+        action: 'user_role_changed',
         user_id: req.user.id,
         resource_type: 'user',
         resource_id: user.id,
@@ -97,7 +97,7 @@ export class UserController {
       }
 
       await this.auditService.log({
-        action: 'user_deleted', // ENUM uses user_deleted for deactivation
+        action: 'user_deleted',
         user_id: req.user.id,
         resource_type: 'user',
         resource_id: req.params.id,
@@ -124,7 +124,7 @@ export class UserController {
       const user = await this.userService.assignCentres(req.params.id, centre_ids);
 
       await this.auditService.log({
-        action: 'user_role_changed', // Closest enum for configuration changes
+        action: 'user_role_changed',
         user_id: req.user.id,
         resource_type: 'user',
         resource_id: req.params.id,
