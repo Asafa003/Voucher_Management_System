@@ -1,5 +1,22 @@
-<<<<<<< HEAD
 import Joi from 'joi';
+
+/**
+ * Application-wide validation constants and helpers
+ */
+export const LIMITS = {
+  NOTES_MAX_LENGTH: 1000,
+  SEARCH_MAX_LENGTH: 100,
+  PASSWORD_MIN_LENGTH: 8,
+  PASSWORD_MAX_LENGTH: 128
+};
+
+export const PASSWORD_POLICY = {
+  minLength: LIMITS.PASSWORD_MIN_LENGTH,
+  maxLength: LIMITS.PASSWORD_MAX_LENGTH,
+  requireUppercase: true,
+  requireLowercase: true,
+  requireNumber: true
+};
 
 export const clientSchema = Joi.object({
   first_name: Joi.string().required().max(100),
@@ -12,7 +29,7 @@ export const clientSchema = Joi.object({
   contact_consent: Joi.boolean().default(false),
   dietary_consent: Joi.boolean().default(false),
   dietary_requirements: Joi.string().allow('', null),
-  notes: Joi.string().allow('', null)
+  notes: Joi.string().allow('', null).max(LIMITS.NOTES_MAX_LENGTH)
 });
 
 export const voucherSchema = Joi.object({
@@ -23,7 +40,7 @@ export const voucherSchema = Joi.object({
   collection_method: Joi.string().valid('collection', 'delivery').default('collection'),
   referral_reason_ids: Joi.array().items(Joi.string().uuid()).max(4),
   expiry_date: Joi.date().iso().allow(null),
-  notes: Joi.string().allow('', null),
+  notes: Joi.string().allow('', null).max(LIMITS.NOTES_MAX_LENGTH),
   
   // Repeat voucher fields
   is_repeat_voucher: Joi.boolean(),
@@ -32,7 +49,7 @@ export const voucherSchema = Joi.object({
     then: Joi.required(),
     otherwise: Joi.optional()
   }),
-  repeat_voucher_notes: Joi.string().allow('', null),
+  repeat_voucher_notes: Joi.string().allow('', null).max(LIMITS.NOTES_MAX_LENGTH),
   repeat_voucher_consent: Joi.boolean().when('is_repeat_voucher', {
     is: true,
     then: Joi.required().valid(true),
@@ -63,24 +80,6 @@ export const validate = (schema) => {
     req.validatedBody = value;
     next();
   };
-};
-=======
-/**
- * Application-wide validation constants and helpers
- */
-export const LIMITS = {
-  NOTES_MAX_LENGTH: 1000,
-  SEARCH_MAX_LENGTH: 100,
-  PASSWORD_MIN_LENGTH: 8,
-  PASSWORD_MAX_LENGTH: 128
-};
-
-export const PASSWORD_POLICY = {
-  minLength: LIMITS.PASSWORD_MIN_LENGTH,
-  maxLength: LIMITS.PASSWORD_MAX_LENGTH,
-  requireUppercase: true,
-  requireLowercase: true,
-  requireNumber: true
 };
 
 export function validatePassword(password) {
@@ -113,4 +112,3 @@ export function validateNotes(notes, fieldName = 'notes') {
   }
   return { valid: true };
 }
->>>>>>> origin/main

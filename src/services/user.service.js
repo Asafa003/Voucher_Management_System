@@ -1,8 +1,8 @@
-import { supabase, supabaseAdmin } from '../config/supabase.js';
+import { supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../utils/logger.js';
 
 export class UserService {
-  async findAll({ role, centreId, isActive, page = 1, limit = 50 }) {
+  async findAll({ role, centreId, isActive, page = 1, limit = 50, userCentres = [], userRole = 'staff' }) {
     try {
       let query = supabaseAdmin
         .from('users')
@@ -13,8 +13,12 @@ export class UserService {
 
       if (role) query = query.eq('role', role);
       if (typeof isActive === 'boolean') query = query.eq('is_active', isActive);
+      
+      // Filter by centre_id if provided or restrict to userCentres for non-super-admins
       if (centreId) {
         query = query.filter('centre_assignments.centre_id', 'eq', centreId);
+      } else if (userRole !== 'super_admin' && userCentres.length > 0) {
+        query = query.filter('centre_assignments.centre_id', 'in', `(${userCentres.join(',')})`);
       }
 
       const offset = (page - 1) * limit;

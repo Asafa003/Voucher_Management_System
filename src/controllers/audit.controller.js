@@ -18,7 +18,9 @@ export class AuditController {
         startDate: start_date,
         endDate: end_date,
         page: parseInt(page),
-        limit: parseInt(limit)
+        limit: parseInt(limit),
+        userCentres: req.userCentres,
+        userRole: req.userRole
       });
 
       res.json(result);

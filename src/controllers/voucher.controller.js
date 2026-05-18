@@ -38,7 +38,7 @@ export class VoucherController {
 
   getVoucherById = async (req, res, next) => {
     try {
-      const voucher = await this.voucherService.findById(req.params.id);
+      const voucher = await this.voucherService.findById(req.params.id, req.userCentres, req.userRole);
 
       if (!voucher) {
         return res.status(404).json({ error: 'Voucher not found' });
@@ -53,7 +53,7 @@ export class VoucherController {
 
   getVoucherByCode = async (req, res, next) => {
     try {
-      const voucher = await this.voucherService.findByCode(req.params.code);
+      const voucher = await this.voucherService.findByCode(req.params.code, req.userCentres, req.userRole);
 
       if (!voucher) {
         return res.status(404).json({ error: 'Voucher not found' });
@@ -153,7 +153,7 @@ export class VoucherController {
       const { id } = req.params;
       const updates = req.body;
 
-      const voucher = await this.voucherService.update(id, updates);
+      const voucher = await this.voucherService.update(id, updates, req.userCentres, req.userRole);
 
       if (!voucher) {
         return res.status(404).json({ error: 'Voucher not found' });
@@ -179,7 +179,7 @@ export class VoucherController {
 
   fulfillVoucher = async (req, res, next) => {
     try {
-      const voucher = await this.voucherService.fulfill(req.params.id, req.user.id);
+      const voucher = await this.voucherService.fulfill(req.params.id, req.user.id, req.userCentres, req.userRole);
 
       if (!voucher) {
         return res.status(404).json({ error: 'Voucher not found or already fulfilled/cancelled' });
@@ -206,7 +206,7 @@ export class VoucherController {
   cancelVoucher = async (req, res, next) => {
     try {
       const { reason } = req.body;
-      const voucher = await this.voucherService.cancel(req.params.id, req.user.id, reason);
+      const voucher = await this.voucherService.cancel(req.params.id, req.user.id, reason, req.userCentres, req.userRole);
 
       if (!voucher) {
         return res.status(404).json({ error: 'Voucher not found or already fulfilled/cancelled' });
@@ -232,7 +232,7 @@ export class VoucherController {
 
   getPrintableVoucher = async (req, res, next) => {
     try {
-      const printable = await this.voucherService.getPrintableVoucher(req.params.id);
+      const printable = await this.voucherService.getPrintableVoucher(req.params.id, req.userCentres, req.userRole);
 
       if (!printable) {
         return res.status(404).json({ error: 'Voucher not found' });

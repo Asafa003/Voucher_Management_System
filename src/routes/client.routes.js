@@ -2,7 +2,7 @@ import express from 'express';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { ClientController } from '../controllers/client.controller.js';
 import { handleValidation } from '../middleware/validate.js';
-import { clientQueryValidation, clientCreateValidation, clientUpdateValidation } from '../validators/index.js';
+import { clientQueryValidation, clientCreateValidation, clientUpdateValidation, clientIdParam } from '../validators/index.js';
 
 const router = express.Router();
 const clientController = new ClientController();

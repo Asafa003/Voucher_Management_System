@@ -1,7 +1,7 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../utils/logger.js';
 
-const VOUCHER_PERIOD_MONTHS = parseInt(process.env.VOUCHER_PERIOD_MONTHS, 10) || 6;
+const VOUCHER_PERIOD_MONTHS = parseInt(process.env.VOUCHER_PERIOD_MONTHS, 10) || 2;
 
 export class VoucherService {
   /**
@@ -46,9 +46,9 @@ export class VoucherService {
     }
   }
 
-  async findById(id) {
+  async findById(id, userCentres = [], userRole = 'super_admin') {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('vouchers')
         .select(`
           *,
@@ -61,8 +61,14 @@ export class VoucherService {
           repeat_reason:repeat_voucher_reasons(name),
           voucher_referral_reasons(referral_reason:referral_reasons(name))
         `)
-        .eq('id', id)
-        .single();
+        .eq('id', id);
+
+      // Explicit centre filtering for non-super-admins
+      if (userRole !== 'super_admin' && userCentres.length > 0) {
+        query = query.in('centre_id', userCentres);
+      }
+
+      const { data, error } = await query.single();
 
       if (error) throw error;
       return data;
@@ -72,9 +78,9 @@ export class VoucherService {
     }
   }
 
-  async findByCode(code) {
+  async findByCode(code, userCentres = [], userRole = 'super_admin') {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('vouchers')
         .select(`
           *,
@@ -82,8 +88,14 @@ export class VoucherService {
           centre:centres(id, name, address),
           issued_by_user:users!issued_by(first_name, last_name)
         `)
-        .eq('voucher_code', code.toUpperCase())
-        .single();
+        .eq('voucher_code', code.toUpperCase());
+
+      // Explicit centre filtering for non-super-admins
+      if (userRole !== 'super_admin' && userCentres.length > 0) {
+        query = query.in('centre_id', userCentres);
+      }
+
+      const { data, error } = await query.single();
 
       if (error && error.code !== 'PGRST116') throw error;
       return data;
@@ -223,7 +235,7 @@ export class VoucherService {
     }
   }
 
-  async update(id, updates) {
+  async update(id, updates, userCentres = [], userRole = 'super_admin') {
     try {
       const { referral_reason_ids, ...updateFields } = updates;
       
@@ -232,17 +244,20 @@ export class VoucherService {
         Object.entries(updateFields).filter(([k]) => allowedFields.includes(k))
       );
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('vouchers')
         .update(sanitized)
-        .eq('id', id)
-        .select()
-        .single();
+        .eq('id', id);
+
+      if (userRole !== 'super_admin' && userCentres.length > 0) {
+        query = query.in('centre_id', userCentres);
+      }
+
+      const { data, error } = await query.select().single();
 
       if (error) throw error;
 
       if (referral_reason_ids && Array.isArray(referral_reason_ids)) {
-        // Use user client to respect RLS for deleting/inserting reasons
         await supabase.from('voucher_referral_reasons').delete().eq('voucher_id', id);
         const limited = referral_reason_ids.slice(0, 4);
         if (limited.length > 0) {
@@ -259,9 +274,9 @@ export class VoucherService {
     }
   }
 
-  async fulfill(id, userId) {
+  async fulfill(id, userId, userCentres = [], userRole = 'super_admin') {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('vouchers')
         .update({
           status: 'fulfilled',
@@ -269,9 +284,13 @@ export class VoucherService {
           fulfilled_by: userId
         })
         .eq('id', id)
-        .eq('status', 'issued')
-        .select()
-        .single();
+        .eq('status', 'issued');
+
+      if (userRole !== 'super_admin' && userCentres.length > 0) {
+        query = query.in('centre_id', userCentres);
+      }
+
+      const { data, error } = await query.select().single();
 
       if (error) throw error;
       return data;
@@ -281,9 +300,9 @@ export class VoucherService {
     }
   }
 
-  async cancel(id, userId, reason) {
+  async cancel(id, userId, reason, userCentres = [], userRole = 'super_admin') {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('vouchers')
         .update({
           status: 'cancelled',
@@ -292,9 +311,13 @@ export class VoucherService {
           cancellation_reason: reason
         })
         .eq('id', id)
-        .eq('status', 'issued')
-        .select()
-        .single();
+        .eq('status', 'issued');
+
+      if (userRole !== 'super_admin' && userCentres.length > 0) {
+        query = query.in('centre_id', userCentres);
+      }
+
+      const { data, error } = await query.select().single();
 
       if (error) throw error;
       return data;
@@ -304,9 +327,9 @@ export class VoucherService {
     }
   }
 
-  async getPrintableVoucher(id) {
+  async getPrintableVoucher(id, userCentres = [], userRole = 'super_admin') {
     try {
-      const voucher = await this.findById(id);
+      const voucher = await this.findById(id, userCentres, userRole);
       if (!voucher) return null;
 
       return {

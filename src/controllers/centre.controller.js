@@ -20,7 +20,7 @@ export class CentreController {
 
   getCentreById = async (req, res, next) => {
     try {
-      const centre = await this.centreService.findById(req.params.id);
+      const centre = await this.centreService.findById(req.params.id, req.userCentres, req.userRole);
 
       if (!centre) {
         return res.status(404).json({ error: 'Centre not found' });

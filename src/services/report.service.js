@@ -112,7 +112,7 @@ export class ReportService {
     }
   }
 
-  async getClientReport({ centreId, startDate, endDate, page = 1, limit = 100, userCentres = [], userRole }) {
+  async getClientReport({ _centreId, _startDate, _endDate, page = 1, limit = 100, _userCentres = [], _userRole }) {
     try {
       let query = supabaseAdmin
         .from('client_voucher_history')

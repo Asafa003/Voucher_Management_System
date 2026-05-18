@@ -2,7 +2,7 @@ import { logger } from '../utils/logger.js';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-export const errorHandler = (err, req, res, next) => {
+export const errorHandler = (err, req, res, _next) => {
   logger.error('Error occurred:', {
     message: err.message,
     stack: err.stack,

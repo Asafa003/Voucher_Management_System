@@ -103,10 +103,10 @@ Example: `COG-20260203-A1B2`
 
 ### Repeat Voucher Check Function
 
-Check if a client has received multiple vouchers (configurable period; default 6 months):
+Check if a client has received multiple vouchers (configurable period; default 2 months):
 
 ```sql
-SELECT * FROM check_repeat_voucher('CLIENT_UUID_HERE', 6);
+SELECT * FROM check_repeat_voucher('CLIENT_UUID_HERE', 2);
 ```
 
 Returns:

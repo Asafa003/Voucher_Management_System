@@ -10,7 +10,7 @@ const voucherController = new VoucherController();
 // Validation schema for repeat check
 const repeatCheckSchema = Joi.object({
   client_id: Joi.string().uuid().required(),
-  months: Joi.number().integer().min(1).max(24).default(6)
+  months: Joi.number().integer().min(1).max(24).default(2)
 });
 
 // All routes require authentication

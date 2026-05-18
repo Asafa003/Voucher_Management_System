@@ -18,7 +18,7 @@ export class AuditService {
     }
   }
 
-  async getAuditLogs({ userId, action, resourceType, resourceId, startDate, endDate, page = 1, limit = 100 }) {
+  async getAuditLogs({ userId, action, resourceType, resourceId, startDate, endDate, page = 1, limit = 100, userCentres = [], userRole = 'staff' }) {
     try {
       let query = supabaseAdmin
         .from('audit_logs')
@@ -34,6 +34,14 @@ export class AuditService {
       if (resourceId) query = query.eq('resource_id', resourceId);
       if (startDate) query = query.gte('created_at', startDate);
       if (endDate) query = query.lte('created_at', endDate);
+
+      // Centre-based filtering for non-super-admins
+      if (userRole !== 'super_admin' && userCentres.length > 0) {
+        query = query.in('centre_id', userCentres);
+      } else if (userRole !== 'super_admin') {
+        // If not super admin and no centres, only see their own logs
+        query = query.eq('user_id', userId);
+      }
 
       const offset = (page - 1) * limit;
       query = query

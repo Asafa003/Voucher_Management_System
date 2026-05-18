@@ -24,8 +24,13 @@ export class CentreService {
     }
   }
 
-  async findById(id) {
+  async findById(id, userCentres = [], userRole = 'super_admin') {
     try {
+      // Access check
+      if (userRole !== 'super_admin' && !userCentres.includes(id)) {
+        return null;
+      }
+
       const { data, error } = await supabaseAdmin
         .from('centres')
         .select(`

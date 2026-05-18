@@ -295,7 +295,7 @@ CREATE TRIGGER trigger_set_voucher_code BEFORE INSERT ON vouchers
   FOR EACH ROW EXECUTE FUNCTION set_voucher_code();
 
 -- Function to check repeat voucher count
-CREATE OR REPLACE FUNCTION check_repeat_voucher(p_client_id UUID, p_months INTEGER DEFAULT 6)
+CREATE OR REPLACE FUNCTION check_repeat_voucher(p_client_id UUID, p_months INTEGER DEFAULT 2)
 RETURNS TABLE(
   voucher_count INTEGER,
   is_repeat BOOLEAN,
@@ -505,7 +505,7 @@ SELECT
   c.postcode,
   COUNT(v.id) AS total_vouchers,
   MAX(v.issue_date) AS last_voucher_date,
-  COUNT(CASE WHEN v.issue_date >= NOW() - INTERVAL '6 months' THEN 1 END) AS vouchers_last_6_months,
+  COUNT(CASE WHEN v.issue_date >= NOW() - INTERVAL '2 months' THEN 1 END) AS vouchers_last_2_months,
   COUNT(CASE WHEN v.is_repeat_voucher THEN 1 END) AS repeat_vouchers
 FROM clients c
 LEFT JOIN vouchers v ON v.client_id = c.id AND v.status != 'cancelled'

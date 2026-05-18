@@ -17,7 +17,9 @@ export class UserController {
         centreId: centre_id,
         isActive: is_active === undefined ? undefined : is_active === 'true',
         page: parseInt(page),
-        limit: parseInt(limit)
+        limit: parseInt(limit),
+        userCentres: req.userCentres,
+        userRole: req.userRole
       });
 
       res.json(result);

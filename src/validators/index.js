@@ -1,10 +1,6 @@
 import { body, param, query } from 'express-validator';
 import { LIMITS, validatePassword } from '../utils/validation.js';
 
-const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const uuidParam = (name) => param(name).isUUID().withMessage('Invalid ID format');
-
 export const clientIdParam = [param('id').isUUID().withMessage('Invalid client ID')];
 
 // Auth
